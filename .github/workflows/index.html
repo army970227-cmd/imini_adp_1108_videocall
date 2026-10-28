@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Imini 銷量監控</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #ffffff; color: #000000; padding: 16px; margin: 0; }
+  h1 { font-size: 20px; text-align: center; margin-bottom: 5px; color: #000000; }
+  .sub { text-align: center; color: #555555; font-size: 12px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+  .card { background: #ffffff; border: 2px solid #000000; border-radius: 12px; padding: 20px; }
+  .member { font-size: 24px; font-weight: bold; color: #000000; margin-bottom: 15px; text-align: center; }
+  .big-num { font-size: 36px; color: #000000; text-align: center; margin: 10px 0; font-weight: bold; }
+  .row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; border-top: 1px solid #000000; padding-top: 10px; color: #000000; }
+  .row span:last-child { font-weight: bold; color: #000000; }
+</style>
+</head>
+<body>
+  <h1>ALLDAY PROJECT 'CRASH' 監控</h1>
+  <div class="sub" id="time">載入中...</div>
+  <div class="grid" id="grid"></div>
+
+<script>
+const pinkMembers = ["ANNIE", "BAILEY", "TARZZAN"]; 
+
+async function load() {
+  try {
+    const res = await fetch('imini_sales.csv?t=' + Date.now());
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return;
+    
+    const headers = lines[0].split(',');
+    const rows = lines.slice(1).map(l => {
+      const cols = l.split(',');
+      let obj = {};
+      headers.forEach((h, i) => obj[h.trim()] = cols[i]);
+      return obj;
+    });
+
+    const latestData = {};
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const r = rows[i];
+      if (!latestData[r.member]) {
+        latestData[r.member] = r;
+      }
+    }
+
+    document.getElementById('time').innerText = '最後更新：' + rows[rows.length - 1].time;
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    
+    for (const [member, data] of Object.entries(latestData)) {
+      const nameColor = pinkMembers.includes(member) ? "#ff69b4" : "#000000";
+      
+      grid.innerHTML += `
+        <div class="card">
+          <div class="member" style="color: ${nameColor};">${member}</div>
+          <div class="big-num">${data.total_sold}</div>
+          <div class="sub" style="margin-bottom:0">目前總銷量</div>
+          <div class="row"><span>剩餘庫存</span> <span>${data.stock}</span></div>
+          <div class="row"><span>上次至今增加</span> <span>+${data.delta}</span></div>
+        </div>
+      `;
+    }
+  } catch (e) { console.error(e); }
+}
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
