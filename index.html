@@ -114,19 +114,19 @@ async function load() {
                 <td style="color: #555;">${r.time.split(' ')[1]}</td>
                 <td>${r.total_sold}</td>
                 <td>${r.stock}</td>
-                     <td>${deltaDisplay}</td>
-              container </tr>
-.innerHTML        `;
+                <td>${deltaDisplay}</td>
+              </tr>
+        `;
       });
 
       tableHTML += `
-            += </tbody>
-          table </table>
+            </tbody>
+          </table>
         </div>
       `;
 
       // 把生成的表格塞進網頁裡
-HTML;
+      container.innerHTML += tableHTML;
     });
 
   } catch (e) { 
