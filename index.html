@@ -3,25 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Imini 即時與歷史監控</title>
+<title>Imini 銷量監控</title>
 <style>
   body { font-family: system-ui, sans-serif; background: #ffffff; color: #000000; padding: 16px; margin: 0; }
   h1 { font-size: 22px; text-align: center; margin-bottom: 5px; color: #000000; }
   .sub { text-align: center; color: #555555; font-size: 12px; margin-bottom: 20px; }
   
-  /* 上半部：成員卡片區 */
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 30px; }
-  .card { background: #ffffff; border: 2px solid #000000; border-radius: 12px; padding: 20px; }
-  .member { font-size: 24px; font-weight: bold; color: #000000; margin-bottom: 15px; text-align: center; }
-  .big-num { font-size: 36px; color: #000000; text-align: center; margin: 10px 0; font-weight: bold; }
-  .card-row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; border-top: 1px solid #000000; padding-top: 10px; color: #000000; }
-  .card-row span:last-child { font-weight: bold; color: #000000; }
+  /* 每個成員的區塊 */
+  .member-section { margin-bottom: 40px; }
+  
+  /* 成員標題 */
+  .member-title { 
+    font-size: 24px; font-weight: bold; text-align: center; 
+    margin-bottom: 15px; padding-bottom: 10px; border-bottom: 3px solid #000000;
+  }
+  .pink { color: #ff69b4; }
+  .black { color: #000000; }
 
-  /* 下半部：歷史紀錄表格區 */
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+  /* 表格樣式 */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th, td { border: 1px solid #000000; padding: 8px 10px; text-align: center; }
   th { background: #f0f0f0; font-weight: bold; }
-  .pink { color: #ff69b4; font-weight: bold; }
+  
+  /* 增加數量的顏色 */
   .delta { color: #ff0000; font-weight: bold; }
 </style>
 </head>
@@ -29,31 +33,14 @@
   <h1>ALLDAY PROJECT 'CRASH' 監控</h1>
   <div class="sub" id="time">載入中...</div>
   
-  <!-- 卡片區 -->
-  <div class="grid" id="grid"></div>
-
-  <hr style="border: 1px solid #000; margin: 30px 0;">
-
-  <!-- 歷史表格區 -->
-  <h2 style="text-align: center; font-size: 18px;">歷史紀錄</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>時間</th>
-        <th>成員</th>
-        <th>總銷量</th>
-        <th>剩餘庫存</th>
-        <th>本次增加</th>
-      </tr>
-    </thead>
-    <tbody id="table-body">
-      <tr><td colspan="5">載入資料中...</td></tr>
-    </tbody>
-  </table>
+  <!-- 這裡會由程式自動生成每個成員的專屬表格 -->
+  <div id="members-container"></div>
 
 <script>
-// 粉紅名單設定
+// 粉紅名單設定（女生名字）
 const pinkMembers = ["YOUNGSEO", "ANNIE", "BAILEY"]; 
+// 設定顯示順序
+const memberOrder = ["WOOCHAN", "TARZZAN", "YOUNGSEO", "ANNIE", "BAILEY"];
 
 async function load() {
   try {
@@ -62,7 +49,7 @@ async function load() {
     const lines = text.trim().split('\n');
     
     if (lines.length < 2) {
-      document.getElementById('time').innerText = "目前還沒有資料";
+      document.getElementById('time').innerText = "目前還沒有資料，請等待機器人抓取。";
       return;
     }
     
@@ -76,65 +63,79 @@ async function load() {
 
     document.getElementById('time').innerText = '最後更新：' + rows[rows.length - 1].time;
     
-    // ====== 處理上半部：每個人最新的資料 ======
-    const latestData = {};
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const r = rows[i];
-      if (!latestData[r.member]) {
-        latestData[r.member] = r;
-      }
-    }
+    const container = document.getElementById('members-container');
+    container.innerHTML = '';
 
-    const grid = document.getElementById('grid');
-    grid.innerHTML = '';
-    
-    // 為了讓卡片順序固定，我們照這個順序排
-    const memberOrder = ["WOOCHAN", "TARZZAN", "YOUNGSEO", "ANNIE", "BAILEY"];
-    
+    // 迴圈處理每一個成員
     memberOrder.forEach(member => {
-      const data = latestData[member];
-      if (!data) return;
-
-      const nameColor = pinkMembers.includes(member) ? "#ff69b4" : "#000000";
+      // 找出這個成員的所有歷史紀錄
+      const memberRows = rows.filter(r => r.member === member);
       
-      grid.innerHTML += `
-        <div class="card">
-          <div class="member" style="color: ${nameColor};">${member}</div>
-          <div class="big-num">${data.total_sold}</div>
-          <div class="sub" style="margin-bottom:0">目前總銷量</div>
-          <div class="card-row"><span>剩餘庫存</span> <span>${data.stock}</span></div>
-          <div class="card-row"><span>上次至今增加</span> <span style="color: #ff0000;">+${data.delta}</span></div>
+      if (memberRows.length === 0) return;
+
+      // 最新的資料（用來顯示在最上面）
+      const latest = memberRows[memberRows.length - 1];
+      
+      // 判斷名字顏色
+      const titleColorClass = pinkMembers.includes(member) ? 'pink' : 'black';
+
+      // 生成表格的 HTML
+      let tableHTML = `
+        <div class="member-section">
+          <div class="member-title ${titleColorClass}">${member}</div>
+          
+          <!-- 該成員的即時數據摘要 -->
+          <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 16px;">
+            目前總銷量：<span style="font-size: 24px;">${latest.total_sold}</span> 張 
+            <span style="font-size: 12px; color: #555; font-weight: normal; margin-left: 10px;">(剩餘庫存: ${latest.stock})</span>
+          </div>
+
+          <!-- 該成員的歷史紀錄表格 -->
+          <table>
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>總銷量</th>
+                <th>剩餘庫存</th>
+                <th>本次增加</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      // 將該成員的歷史紀錄反轉（最新的在最上面）
+      const reversedMemberRows = [...memberRows].reverse();
+      
+      reversedMemberRows.forEach(r => {
+        const deltaDisplay = r.delta > 0 ? `<span class="delta">+${r.delta}</span>` : `+0`;
+        
+        tableHTML += `
+              <tr>
+                <td style="color: #555;">${r.time.split(' ')[1]}</td>
+                <td>${r.total_sold}</td>
+                <td>${r.stock}</td>
+                     <td>${deltaDisplay}</td>
+              container </tr>
+.innerHTML        `;
+      });
+
+      tableHTML += `
+            += </tbody>
+          table </table>
         </div>
       `;
-    });
 
-    // ====== 處理下半部：歷史紀錄表格 ======
-    const reversedRows = [...rows].reverse();
-    const tableBody = document.getElementById('table-body');
-    tableBody.innerHTML = '';
-    
-    reversedRows.forEach(r => {
-      const isPink = pinkMembers.includes(r.member);
-      const nameClass = isPink ? 'pink' : '';
-      const deltaDisplay = r.delta > 0 ? `<span class="delta">+${r.delta}</span>` : `+0`;
-      
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="font-size: 12px; color: #555;">${r.time.split(' ')[1]}</td>
-        <td class="${nameClass}">${r.member}</td>
-        <td>${r.total_sold}</td>
-        <td>${r.stock}</td>
-        <td>${deltaDisplay}</td>
-      `;
-      tableBody.appendChild(tr);
+      // 把生成的表格塞進網頁裡
+HTML;
     });
 
   } catch (e) { 
     console.error(e);
-    document.getElementById('table-body').innerHTML = '<tr><td colspan="5">資料載入失敗</td></tr>';
+    document.getElementById('time').innerText = "資料載入失敗";
   }
 }
 load();
+// 每 60 秒自動更新一次
 setInterval(load, 60000);
 </script>
 </body>
